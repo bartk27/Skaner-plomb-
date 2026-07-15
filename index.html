@@ -4,7 +4,6 @@
 <head>
 
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Skaner plomb</title>
@@ -17,95 +16,42 @@
 
 <style>
 
-*{
-box-sizing:border-box;
+body{
+margin:0;
+padding:10px;
+background:#eef3f8;
 font-family:Arial,sans-serif;
 }
 
 
-body{
-
-margin:0;
-padding:10px;
-background:#eef3f8;
-
-}
-
-
-header{
-
+h1{
 background:#1565c0;
 color:white;
-padding:15px;
 text-align:center;
-font-size:24px;
-font-weight:bold;
+padding:15px;
 border-radius:12px;
-
 }
 
 
-
-.karta{
-
+.box{
 background:white;
 padding:12px;
 margin-top:10px;
 border-radius:12px;
 box-shadow:0 2px 8px #bbb;
-
 }
 
 
-
 video{
-
 width:100%;
 height:240px;
 background:black;
 border-radius:12px;
 object-fit:cover;
-
 }
-
-
-
-#status{
-
-padding:10px;
-margin-top:8px;
-border-radius:8px;
-text-align:center;
-font-weight:bold;
-background:#fff3cd;
-
-}
-
-
-
-#numer{
-
-font-size:32px;
-font-weight:bold;
-text-align:center;
-margin:15px 0;
-word-break:break-all;
-
-}
-
-
-
-#barcode{
-
-width:100%;
-height:120px;
-
-}
-
 
 
 button{
-
 width:100%;
 padding:12px;
 margin-top:8px;
@@ -115,51 +61,61 @@ background:#1565c0;
 color:white;
 font-size:17px;
 font-weight:bold;
-
 }
-
 
 
 button:active{
-
 transform:scale(0.97);
-
 }
 
 
-
 input{
-
 width:100%;
 padding:12px;
 font-size:18px;
 border-radius:8px;
 border:1px solid #aaa;
-
 }
 
 
+#status{
+padding:10px;
+margin-top:8px;
+border-radius:8px;
+text-align:center;
+font-weight:bold;
+background:#fff3cd;
+}
 
-.historia button{
 
+#numer{
+font-size:32px;
+font-weight:bold;
+text-align:center;
+margin:15px;
+}
+
+
+#barcode{
+width:100%;
+height:120px;
+}
+
+
+.hist button{
 background:#e3f2fd;
 color:#000;
-
 }
-
 
 
 #licznik{
-
 font-size:28px;
 font-weight:bold;
 text-align:center;
-
 }
 
 
 </style>
-
 
 </head>
 
@@ -167,30 +123,36 @@ text-align:center;
 <body>
 
 
-<header>
+<h1>
 📷 SKANER PLOMB
-</header>
+</h1>
 
 
 
-<div class="karta">
+<div class="box">
 
 <h3>Kamera</h3>
 
 <video id="video" autoplay muted playsinline></video>
 
 <div id="status">
-Uruchamianie...
+Kamera wyłączona
 </div>
 
+
+<button onclick="uruchomSkaner()">
+▶ Włącz skaner
+</button>
+
+
 </div>
 
 
 
-
-<div class="karta">
+<div class="box">
 
 <h3>Aktualna plomba</h3>
+
 
 <div id="numer">
 Brak
@@ -204,23 +166,22 @@ Brak
 
 
 
-
-<div class="karta">
+<div class="box">
 
 <h3>Historia plomb</h3>
 
-<div id="historia"></div>
+<div id="historia" class="hist">
+
+</div>
 
 
 </div>
 
 
 
+<div class="box">
 
-<div class="karta">
-
-<h3>Ręczne wpisanie</h3>
-
+<h3>Wpis ręczny</h3>
 
 <input id="reczna" placeholder="Numer plomby">
 
@@ -234,10 +195,9 @@ Brak
 
 
 
+<div class="box">
 
-<div class="karta">
-
-<h3>Licznik skanów</h3>
+<h3>Licznik</h3>
 
 <div id="licznik">
 0
@@ -255,70 +215,45 @@ const video =
 document.getElementById("video");
 
 
+let reader;
+
 let historia=[];
 
-let aktualna="";
-
-let scanner;// ============================
+let aktualna="";// ============================
 // URUCHOMIENIE SKANERA
 // ============================
 
 
-async function startScanner(){
+async function uruchomSkaner(){
 
 
 try{
 
 
-const hints = new Map();
-
-
-hints.set(
-
-ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS,
-
-[
-
-ZXingBrowser.BarcodeFormat.CODE_128,
-
-ZXingBrowser.BarcodeFormat.CODE_39,
-
-ZXingBrowser.BarcodeFormat.EAN_13
-
-]
-
+ustawStatus(
+"Uruchamianie kamery...",
+true
 );
 
 
 
-scanner =
-new ZXingBrowser.BrowserMultiFormatReader(
-hints
-);
-
+reader =
+new ZXingBrowser.BrowserMultiFormatReader();
 
 
 
 const kamery =
+
 await ZXingBrowser.BrowserMultiFormatReader
 .listVideoInputDevices();
 
 
 
-if(!kamery.length){
+if(kamery.length===0){
 
-
-ustawStatus(
-"❌ Nie znaleziono kamery",
-false
-);
-
-
-return;
-
+throw new Error("Brak kamery");
 
 }
-
 
 
 
@@ -338,14 +273,15 @@ k.label.toLowerCase().includes("rear")
 
 if(!tylna){
 
-tylna=kamery[kamery.length-1];
+tylna =
+kamery[kamery.length-1];
 
 }
 
 
 
 
-scanner.decodeFromVideoDevice(
+reader.decodeFromVideoDevice(
 
 tylna.deviceId,
 
@@ -358,7 +294,7 @@ video,
 if(result){
 
 
-dodajSkan(
+obsluzKod(
 result.getText()
 );
 
@@ -369,13 +305,12 @@ result.getText()
 }
 
 
-
 );
 
 
 
 ustawStatus(
-"✅ Kamera gotowa",
+"✅ Skaner działa",
 true
 );
 
@@ -390,44 +325,207 @@ console.log(e);
 
 
 ustawStatus(
-"❌ Problem z kamerą",
+"❌ Błąd: "+e.message,
 false
+);
+
+
+}
+
+
+}
+
+
+
+
+function ustawStatus(txt,ok){
+
+
+const s =
+document.getElementById("status");
+
+
+s.innerHTML=txt;
+
+
+
+if(ok){
+
+s.style.background="#c8e6c9";
+
+}
+
+else{
+
+s.style.background="#ffcdd2";
+
+}
+
+
+
+}
+
+
+
+
+
+// ============================
+// OBSŁUGA PLOMBY
+// ============================
+
+
+function obsluzKod(kod){
+
+
+kod=kod.trim();
+
+
+
+if(
+
+!kod.startsWith("01")
+
+&&
+
+!kod.startsWith("05")
+
+){
+
+
+ustawStatus(
+"❌ Nieprawidłowa plomba",
+false
+);
+
+
+return;
+
+}
+
+
+
+
+
+if(historia.includes(kod)){
+
+
+ustawStatus(
+"⚠️ Plomba już zeskanowana",
+false
+);
+
+
+return;
+
+
+}
+
+
+
+historia.unshift(kod);
+
+
+pokazPlombe(kod);
+
+
+
+ustawStatus(
+"✅ Zeskanowano "+kod,
+true
 );
 
 
 
 }
 
+
+
+
+
+function pokazPlombe(kod){
+
+
+aktualna=kod;
+
+
+
+document.getElementById("numer")
+.innerHTML=kod;
+
+
+
+JsBarcode(
+
+"#barcode",
+
+kod,
+
+{
+
+format:"CODE128",
+
+displayValue:false,
+
+height:120,
+
+margin:10
+
+}
+
+);
+
+
+
+odswiezHistorie();
+
+
+
 }
 
 
 
 
 
-function ustawStatus(
-tekst,
-ok=true
-){
+function odswiezHistorie(){
 
 
-let pole =
-document.getElementById("status");
+let wynik="";
 
 
 
-pole.innerHTML=tekst;
+historia.forEach(
+
+(kod,index)=>{
 
 
+wynik+=`
 
-if(ok){
+<button onclick="wybierzHistorie('${kod}')">
 
-pole.style.background="#c8e6c9";
+${index+1}. ${kod}
+
+</button>
+
+`;
+
 
 }
 
-else{
+);
 
-pole.style.background="#ffcdd2// ============================
+
+
+document.getElementById("historia")
+.innerHTML=wynik;
+
+
+
+document.getElementById("licznik")
+.innerHTML=historia.length;
+
+
+
+}// ============================
 // WYBÓR Z HISTORII
 // ============================
 
@@ -466,10 +564,15 @@ document.getElementById("reczna")
 
 
 
-if(kod){
+if(kod===""){
+
+return;
+
+}
 
 
-dodajSkan(kod);
+
+obsluzKod(kod);
 
 
 
@@ -481,43 +584,11 @@ document.getElementById("reczna")
 
 
 
-}
-
-
-
 
 
 // ============================
-// START APLIKACJI
+// START
 // ============================
-
-
-startScanner();
-
-
-
-// ============================
-// ZATRZYMANIE KAMERY
-// ============================
-
-
-window.addEventListener(
-
-"beforeunload",
-
-()=>{
-
-
-if(scanner){
-
-scanner.reset();
-
-}
-
-
-}
-
-);
 
 
 
