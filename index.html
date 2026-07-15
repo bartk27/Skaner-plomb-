@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Skaner plomb</title>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+
+<style>
+
+*{
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+
+body{
+
+margin:0;
+padding:10px;
+background:#eef3f8;
+
+}
+
+
+header{
+
+background:#1565c0;
+color:white;
+padding:15px;
+text-align:center;
+font-size:24px;
+font-weight:bold;
+border-radius:12px;
+
+}
+
+
+
+.karta{
+
+background:white;
+padding:12px;
+margin-top:10px;
+border-radius:12px;
+box-shadow:0 2px 8px #bbb;
+
+}
+
+
+
+video{
+
+width:100%;
+height:240px;
+background:black;
+border-radius:12px;
+object-fit:cover;
+
+}
+
+
+
+#status{
+
+padding:10px;
+margin-top:8px;
+border-radius:8px;
+text-align:center;
+font-weight:bold;
+background:#fff3cd;
+
+}
+
+
+
+#numer{
+
+font-size:32px;
+font-weight:bold;
+text-align:center;
+margin:15px 0;
+word-break:break-all;
+
+}
+
+
+
+#barcode{
+
+width:100%;
+height:120px;
+
+}
+
+
+
+button{
+
+width:100%;
+padding:12px;
+margin-top:8px;
+border:0;
+border-radius:10px;
+background:#1565c0;
+color:white;
+font-size:17px;
+font-weight:bold;
+
+}
+
+
+
+button:active{
+
+transform:scale(0.97);
+
+}
+
+
+
+input{
+
+width:100%;
+padding:12px;
+font-size:18px;
+border-radius:8px;
+border:1px solid #aaa;
+
+}
+
+
+
+.historia button{
+
+background:#e3f2fd;
+color:#000;
+
+}
+
+
+
+#licznik{
+
+font-size:28px;
+font-weight:bold;
+text-align:center;
+
+}
+
+
+</style>
+
+
+</head>
+
+
+<body>
+
+
+<header>
+📷 SKANER PLOMB
+</header>
+
+
+
+<div class="karta">
+
+<h3>Kamera</h3>
+
+<video id="video" autoplay muted playsinline></video>
+
+<div id="status">
+Uruchamianie...
+</div>
+
+</div>
+
+
+
+
+<div class="karta">
+
+<h3>Aktualna plomba</h3>
+
+<div id="numer">
+Brak
+</div>
+
+
+<svg id="barcode"></svg>
+
+
+</div>
+
+
+
+
+<div class="karta">
+
+<h3>Historia plomb</h3>
+
+<div id="historia"></div>
+
+
+</div>
+
+
+
+
+<div class="karta">
+
+<h3>Ręczne wpisanie</h3>
+
+
+<input id="reczna" placeholder="Numer plomby">
+
+
+<button onclick="dodajRecznie()">
+➕ Dodaj plombę
+</button>
+
+
+</div>
+
+
+
+
+<div class="karta">
+
+<h3>Licznik skanów</h3>
+
+<div id="licznik">
+0
+</div>
+
+
+</div>
+
+
+
+<script>
+
+
+const video =
+document.getElementById("video");
+
+
+let historia=[];
+
+let aktualna="";
+
+let scanner;// ============================
+// URUCHOMIENIE SKANERA
+// ============================
+
+
+async function startScanner(){
+
+
+try{
+
+
+const hints = new Map();
+
+
+hints.set(
+
+ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS,
+
+[
+
+ZXingBrowser.BarcodeFormat.CODE_128,
+
+ZXingBrowser.BarcodeFormat.CODE_39,
+
+ZXingBrowser.BarcodeFormat.EAN_13
+
+]
+
+);
+
+
+
+scanner =
+new ZXingBrowser.BrowserMultiFormatReader(
+hints
+);
+
+
+
+
+const kamery =
+await ZXingBrowser.BrowserMultiFormatReader
+.listVideoInputDevices();
+
+
+
+if(!kamery.length){
+
+
+ustawStatus(
+"❌ Nie znaleziono kamery",
+false
+);
+
+
+return;
+
+
+}
+
+
+
+
+let tylna =
+
+kamery.find(
+
+k =>
+
+k.label.toLowerCase().includes("back")
+||
+k.label.toLowerCase().includes("rear")
+
+);
+
+
+
+if(!tylna){
+
+tylna=kamery[kamery.length-1];
+
+}
+
+
+
+
+scanner.decodeFromVideoDevice(
+
+tylna.deviceId,
+
+video,
+
+
+(result)=>{
+
+
+if(result){
+
+
+dodajSkan(
+result.getText()
+);
+
+
+}
+
+
+}
+
+
+
+);
+
+
+
+ustawStatus(
+"✅ Kamera gotowa",
+true
+);
+
+
+
+}
+
+catch(e){
+
+
+console.log(e);
+
+
+ustawStatus(
+"❌ Problem z kamerą",
+false
+);
+
+
+
+}
+
+}
+
+
+
+
+
+function ustawStatus(
+tekst,
+ok=true
+){
+
+
+let pole =
+document.getElementById("status");
+
+
+
+pole.innerHTML=tekst;
+
+
+
+if(ok){
+
+pole.style.background="#c8e6c9";
+
+}
+
+else{
+
+pole.style.background="#ffcdd2// ============================
+// WYBÓR Z HISTORII
+// ============================
+
+
+function wybierzHistorie(kod){
+
+
+pokazPlombe(kod);
+
+
+ustawStatus(
+"📌 Wybrano z historii",
+true
+);
+
+
+}
+
+
+
+
+
+// ============================
+// RĘCZNE DODANIE
+// ============================
+
+
+function dodajRecznie(){
+
+
+let kod =
+
+document.getElementById("reczna")
+.value
+.trim();
+
+
+
+if(kod){
+
+
+dodajSkan(kod);
+
+
+
+document.getElementById("reczna")
+.value="";
+
+
+}
+
+
+
+}
+
+
+
+
+
+// ============================
+// START APLIKACJI
+// ============================
+
+
+startScanner();
+
+
+
+// ============================
+// ZATRZYMANIE KAMERY
+// ============================
+
+
+window.addEventListener(
+
+"beforeunload",
+
+()=>{
+
+
+if(scanner){
+
+scanner.reset();
+
+}
+
+
+}
+
+);
+
+
+
+</script>
+
+
+</body>
+
+</html>
